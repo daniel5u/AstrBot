@@ -375,6 +375,10 @@ class ProviderManager:
                 from .sources.anthropic_source import (
                     ProviderAnthropic as ProviderAnthropic,
                 )
+            case "kimicode_chat_completion":
+                from .sources.kimicode_source import (
+                    ProviderKimiCode as ProviderKimiCode,
+                )
             case "googlegenai_chat_completion":
                 from .sources.gemini_source import (
                     ProviderGoogleGenAI as ProviderGoogleGenAI,

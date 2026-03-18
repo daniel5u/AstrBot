@@ -29,8 +29,6 @@ from ..register import register_provider_adapter
     "Anthropic Claude API 提供商适配器",
 )
 class ProviderAnthropic(Provider):
-    _KIMI_CODING_USER_AGENT = "claude-code/0.1.0"
-
     def __init__(
         self,
         provider_config,
@@ -49,7 +47,6 @@ class ProviderAnthropic(Provider):
             self.timeout = int(self.timeout)
         self.thinking_config = provider_config.get("anth_thinking_config", {})
         self.custom_headers = self._resolve_custom_headers(provider_config)
-        self._apply_kimi_subscription_headers()
 
         if use_api_key:
             self._init_api_key(provider_config)
@@ -91,16 +88,6 @@ class ProviderAnthropic(Provider):
                 continue
             headers[str(key)] = str(value)
         return headers
-
-    def _is_kimi_coding_target(self) -> bool:
-        base_url = str(self.base_url or "").strip().lower()
-        return "api.kimi.com/coding" in base_url
-
-    def _apply_kimi_subscription_headers(self) -> None:
-        if not self._is_kimi_coding_target():
-            return
-        if not any(k.lower() == "user-agent" for k in self.custom_headers):
-            self.custom_headers["User-Agent"] = self._KIMI_CODING_USER_AGENT
 
     def _apply_thinking_config(self, payloads: dict) -> None:
         thinking_type = self.thinking_config.get("type", "")

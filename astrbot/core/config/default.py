@@ -1128,9 +1128,9 @@ CONFIG_METADATA_2 = {
                         "custom_headers": {},
                     },
                     "Kimi Subscription (Coding)": {
-                        "id": "kimi_subscription",
-                        "provider": "kimi",
-                        "type": "anthropic_chat_completion",
+                        "id": "kimicode",
+                        "provider": "kimicode",
+                        "type": "kimicode_chat_completion",
                         "provider_type": "chat_completion",
                         "enable": True,
                         "key": [],

@@ -39,6 +39,7 @@ from ..register import register_provider_adapter
 )
 class ProviderOpenAIOfficial(Provider):
     _ERROR_TEXT_CANDIDATE_MAX_CHARS = 4096
+    _KIMI_CODING_USER_AGENT = "claude-code/0.1.0"
 
     @classmethod
     def _truncate_error_text_candidate(cls, text: str) -> str:
@@ -172,6 +173,8 @@ class ProviderOpenAIOfficial(Provider):
         self.chosen_api_key = self.api_keys[0] if len(self.api_keys) > 0 else None
         self.timeout = provider_config.get("timeout", 120)
         self.custom_headers = provider_config.get("custom_headers", {})
+        self.api_base = str(provider_config.get("api_base", "") or "").strip()
+        self.model_name = str(provider_config.get("model", "") or "").strip().lower()
         if isinstance(self.timeout, str):
             self.timeout = int(self.timeout)
 
@@ -181,13 +184,15 @@ class ProviderOpenAIOfficial(Provider):
             for key in self.custom_headers:
                 self.custom_headers[key] = str(self.custom_headers[key])
 
+        self.custom_headers = self._apply_kimi_subscription_headers(self.custom_headers)
+
         if "api_version" in provider_config:
             # Using Azure OpenAI API
             self.client = AsyncAzureOpenAI(
                 api_key=self.chosen_api_key,
                 api_version=provider_config.get("api_version", None),
                 default_headers=self.custom_headers,
-                base_url=provider_config.get("api_base", ""),
+                base_url=self.api_base,
                 timeout=self.timeout,
                 http_client=self._create_http_client(provider_config),
             )
@@ -195,7 +200,7 @@ class ProviderOpenAIOfficial(Provider):
             # Using OpenAI Official API
             self.client = AsyncOpenAI(
                 api_key=self.chosen_api_key,
-                base_url=provider_config.get("api_base", None),
+                base_url=self.api_base or None,
                 default_headers=self.custom_headers,
                 timeout=self.timeout,
                 http_client=self._create_http_client(provider_config),
@@ -209,6 +214,22 @@ class ProviderOpenAIOfficial(Provider):
         self.set_model(model)
 
         self.reasoning_key = "reasoning_content"
+
+    def _is_kimi_coding_target(self) -> bool:
+        if "api.kimi.com/coding" in self.api_base.lower():
+            return True
+        return "kimi-for-coding" in self.model_name
+
+    def _apply_kimi_subscription_headers(
+        self,
+        custom_headers: dict | None,
+    ) -> dict | None:
+        if not self._is_kimi_coding_target():
+            return custom_headers
+        headers = dict(custom_headers or {})
+        if not any(key.lower() == "user-agent" for key in headers):
+            headers["User-Agent"] = self._KIMI_CODING_USER_AGENT
+        return headers
 
     async def get_models(self):
         try:

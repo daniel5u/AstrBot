@@ -29,6 +29,8 @@ from ..register import register_provider_adapter
     "Anthropic Claude API 提供商适配器",
 )
 class ProviderAnthropic(Provider):
+    _KIMI_CODING_USER_AGENT = "claude-code/0.1.0"
+
     def __init__(
         self,
         provider_config,
@@ -46,6 +48,8 @@ class ProviderAnthropic(Provider):
         if isinstance(self.timeout, str):
             self.timeout = int(self.timeout)
         self.thinking_config = provider_config.get("anth_thinking_config", {})
+        self.custom_headers = self._resolve_custom_headers(provider_config)
+        self._apply_kimi_subscription_headers()
 
         if use_api_key:
             self._init_api_key(provider_config)
@@ -56,17 +60,47 @@ class ProviderAnthropic(Provider):
         self.chosen_api_key: str = ""
         self.api_keys: list = super().get_keys()
         self.chosen_api_key = self.api_keys[0] if len(self.api_keys) > 0 else ""
-        self.client = AsyncAnthropic(
-            api_key=self.chosen_api_key,
-            timeout=self.timeout,
-            base_url=self.base_url,
-            http_client=self._create_http_client(provider_config),
-        )
+        client_kwargs = {
+            "api_key": self.chosen_api_key,
+            "timeout": self.timeout,
+            "base_url": self.base_url,
+            "http_client": self._create_http_client(provider_config),
+        }
+        if self.custom_headers:
+            client_kwargs["default_headers"] = self.custom_headers
+        try:
+            self.client = AsyncAnthropic(**client_kwargs)
+        except TypeError:
+            client_kwargs.pop("default_headers", None)
+            self.client = AsyncAnthropic(**client_kwargs)
+            if self.custom_headers and hasattr(self.client, "_custom_headers"):
+                self.client._custom_headers.update(self.custom_headers)  # type: ignore[attr-defined]
 
     def _create_http_client(self, provider_config: dict) -> httpx.AsyncClient | None:
         """创建带代理的 HTTP 客户端"""
         proxy = provider_config.get("proxy", "")
         return create_proxy_client("Anthropic", proxy)
+
+    def _resolve_custom_headers(self, provider_config: dict) -> dict[str, str]:
+        raw_headers = provider_config.get("custom_headers", {})
+        if not isinstance(raw_headers, dict):
+            return {}
+        headers: dict[str, str] = {}
+        for key, value in raw_headers.items():
+            if not key:
+                continue
+            headers[str(key)] = str(value)
+        return headers
+
+    def _is_kimi_coding_target(self) -> bool:
+        base_url = str(self.base_url or "").strip().lower()
+        return "api.kimi.com/coding" in base_url
+
+    def _apply_kimi_subscription_headers(self) -> None:
+        if not self._is_kimi_coding_target():
+            return
+        if not any(k.lower() == "user-agent" for k in self.custom_headers):
+            self.custom_headers["User-Agent"] = self._KIMI_CODING_USER_AGENT
 
     def _apply_thinking_config(self, payloads: dict) -> None:
         thinking_type = self.thinking_config.get("type", "")

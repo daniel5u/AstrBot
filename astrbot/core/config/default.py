@@ -1112,6 +1112,7 @@ CONFIG_METADATA_2 = {
                         "api_base": "https://api.anthropic.com/v1",
                         "timeout": 120,
                         "proxy": "",
+                        "custom_headers": {},
                         "anth_thinking_config": {"type": "", "budget": 0, "effort": ""},
                     },
                     "Moonshot": {
@@ -1125,6 +1126,19 @@ CONFIG_METADATA_2 = {
                         "api_base": "https://api.moonshot.cn/v1",
                         "proxy": "",
                         "custom_headers": {},
+                    },
+                    "Kimi Subscription (Coding)": {
+                        "id": "kimi_subscription",
+                        "provider": "kimi",
+                        "type": "anthropic_chat_completion",
+                        "provider_type": "chat_completion",
+                        "enable": True,
+                        "key": [],
+                        "api_base": "https://api.kimi.com/coding/",
+                        "timeout": 120,
+                        "proxy": "",
+                        "custom_headers": {"User-Agent": "claude-code/0.1.0"},
+                        "anth_thinking_config": {"type": "", "budget": 0, "effort": ""},
                     },
                     "MiniMax": {
                         "id": "minimax",
